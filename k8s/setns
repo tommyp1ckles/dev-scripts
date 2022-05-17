@@ -1,0 +1,9 @@
+#!/bin/bash
+
+ns=${1}
+
+if [ -z "${ns}" ]; then
+  echo "must set namespace"
+  exit 1
+fi
+kubectl config set-context --current --namespace="${ns}"

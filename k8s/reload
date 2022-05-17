@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e 
+set -o pipefail
+make docker-cilium-image
+kind load docker-image quay.io/cilium/cilium:latest
+kubectl rollout restart ds cilium -n kube-system
