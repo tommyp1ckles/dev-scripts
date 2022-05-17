@@ -1,0 +1,31 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+export DOCKER_REGISTRY=localhost:5000
+export DOCKER_FLAGS=--push 
+export DOCKER_IMAGE_TAG=latest
+make docker-operator-generic-image 
+make dev-docker-image
+
+function cilium-helm-install {
+    if [ -z "${1}" ]; then
+        echo "tag not provided"
+        return
+    fi
+    ciliumVersion=${1}
+    cd /home/tom.hadlaw/cilium/install/kubernetes
+    CILIUM_CI_TAG="${1}"
+    helm template cilium ./cilium \
+      --namespace kube-system \
+      --set debug.enabled=true \
+      --set image.repository=localhost:5000/cilium/cilium-dev \
+      --set image.tag=$CILIUM_CI_TAG \
+      --set operator.image.repository=localhost:5000/cilium/operator \
+      --set operator.image.suffix="" \
+      --set securityContext.privileged=true \
+      --set operator.image.tag=$CILIUM_CI_TAG | tee /tmp/cilium.yaml
+    kubectl apply -f /tmp/cilium.yaml
+}
+
+cilium-helm-install latest
