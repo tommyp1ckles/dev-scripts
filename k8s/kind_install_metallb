@@ -2,9 +2,9 @@
 
 echo "Creating MetaLB for Kind Cluster"
 KIND_NET_CIDR=$(docker network inspect kind -f '{{(index .IPAM.Config 0).Subnet}}')
-METALLB_IP_START=$(echo ${KIND_NET_CIDR} | sed "s@0.0/16@255.200@")
-METALLB_IP_END=$(echo ${KIND_NET_CIDR} | sed "s@0.0/16@255.250@")
-METALLB_IP_RANGE="${METALLB_IP_START}-${METALLB_IP_END}"
+IP_START=$(echo ${KIND_NET_CIDR} | sed "s@0.0/16@255.200@")
+IP_END=$(echo ${KIND_NET_CIDR} | sed "s@0.0/16@255.250@")
+IP_RANGE="${IP_START}-${IP_END}"
 
 cat << EOF > metallb_values.yaml
 configInline:
@@ -12,10 +12,12 @@ configInline:
   - name: default
     protocol: layer2
     addresses:
-    - ${METALLB_IP_RANGE}
+    - ${IP_RANGE}
 EOF
 
-helm install --namespace metallb-system --create-namespace \
+helm install \
+  --namespace metallb-system \
+  --create-namespace \
   --repo https://metallb.github.io/metallb metallb metallb \
   --values metallb_values.yaml
 
