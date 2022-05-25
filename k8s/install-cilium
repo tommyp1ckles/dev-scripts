@@ -29,3 +29,7 @@ function cilium-helm-install {
 }
 
 cilium-helm-install latest
+cap=$(k get ds -n kube-system cilium -o json 2>/dev/null)
+echo "Rolling out Cilium DaemonSet..."
+kubectl rollout restart ds cilium -n kube-system
+
