@@ -1,12 +1,36 @@
 #!/bin/bash
 
+set -o pipefail
+
+agent_only=false
+debug=false
+
+while getopts "ad" arg; do
+    case "$arg" in    
+      a) agent_only=true ;;
+      d) debug=true ;;
+    esac
+done
+
+echo "Agent:	${agent_only}"
+echo "Debug:	${debug}"
+
+project_dir=$HOME/Documents/Code/cilium
+install_dir=${project_dir}/install/kubernetes
+
 set -e
 set -o pipefail
 export DOCKER_REGISTRY=localhost:5000
 export DOCKER_FLAGS=--push 
 export DOCKER_IMAGE_TAG=latest
-make docker-operator-generic-image 
-make dev-docker-image
+
+function build_cilium {
+    (cd ${project_dir} && make dev-docker-image)
+}
+
+function build_cilium_operator {
+    (cd ${project} && make docker-operator-generic-image)
+}
 
 function cilium-helm-install {
     if [ -z "${1}" ]; then
@@ -14,11 +38,14 @@ function cilium-helm-install {
         return
     fi
     ciliumVersion=${1}
-    cd /home/tom.hadlaw/cilium/install/kubernetes
+    cd ${install_dir}
     CILIUM_CI_TAG="${1}"
     helm template cilium ./cilium \
       --namespace kube-system \
-      --set debug.enabled=true \
+      --set prometheus.enabled=true \
+      --set operator.prometheus.enabled=true \
+      --set debug.enabled=${debug} \
+      --set hubble.enabled=true \
       --set image.repository=localhost:5000/cilium/cilium-dev \
       --set image.tag=$CILIUM_CI_TAG \
       --set operator.image.repository=localhost:5000/cilium/operator \
@@ -28,8 +55,8 @@ function cilium-helm-install {
     kubectl apply -f /tmp/cilium.yaml
 }
 
+build_cilium
 cilium-helm-install latest
-cap=$(k get ds -n kube-system cilium -o json 2>/dev/null)
 echo "Rolling out Cilium DaemonSet..."
 kubectl rollout restart ds cilium -n kube-system
 

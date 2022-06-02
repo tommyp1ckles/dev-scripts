@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Stuff piped into here will have certain helpful patterns
+# highlighted.
+function highlight_notable {
+	grep -E "^|error|warning"
+}
+
+while true; do
+	# Grab the newest Pod obj.
+	cilium_pods_data=$(kubectl get pods -n kube-system -l=k8s-app=cilium --sort-by=.metadata.creationTimestamp -o json) 
+	pod_name=$(echo ${cilium_pods_data} | jq -r .items[0].metadata.name)
+	phase=$(echo ${cilium_pods_data} | jq -r .items[0].status.phase)
+
+	if [[ "${phase}" == "Running" ]]; then
+		kubectl logs ${pod_name} -n kube-system -f | highlight_notable
+		break
+	fi
+	# If failed, try getting last logs, and warn.
+	if [[ "${phase}" == "Failed" ]]; then
+		echo "###############################################################"
+		echo "# Warning: Pod '${pod_name}' is in a failure state.           #"
+		echo "#          Getting previous logs.                             #"
+		echo "###############################################################"
+		kubectl logs ${pod_name} -n kube-system --previous | highlight_notable
+		break
+	fi
+	if [[ "${phase}" != "Pending" ]]; then
+		"Phase is '${phase}', waiting for Pod ${pod_name} to become ready"
+	fi	
+done
+
