@@ -26,7 +26,7 @@ while true; do
 		break
 	fi
 	if [[ "${phase}" != "Pending" ]]; then
-		"Phase is '${phase}', waiting for Pod ${pod_name} to become ready"
+		echo "Phase is '${phase}', waiting for Pod ${pod_name} to become ready"
 	fi	
 done
 

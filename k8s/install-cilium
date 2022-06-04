@@ -2,20 +2,22 @@
 
 set -o pipefail
 
-agent_only=false
+controller=false
 debug=false
+start_time=$(date '+%s')
 
 while getopts "ad" arg; do
     case "$arg" in    
-      a) agent_only=true ;;
+      a) controller=true ;;
       d) debug=true ;;
     esac
 done
 
-echo "Agent:	${agent_only}"
-echo "Debug:	${debug}"
+echo "Controller:	${controller}"
+echo "Agent:		true"
+echo "Debug:		${debug}"
 
-project_dir=$HOME/Documents/Code/cilium
+project_dir=$HOME/go/src/github.com/cilium/cilium
 install_dir=${project_dir}/install/kubernetes
 
 set -e
@@ -29,7 +31,7 @@ function build_cilium {
 }
 
 function build_cilium_operator {
-    (cd ${project} && make docker-operator-generic-image)
+    (cd ${project_dir} && make docker-operator-generic-image)
 }
 
 function cilium-helm-install {
@@ -54,9 +56,22 @@ function cilium-helm-install {
       --set operator.image.tag=$CILIUM_CI_TAG | tee /tmp/cilium.yaml
     kubectl apply -f /tmp/cilium.yaml
 }
+if [[ "${controller}" ]]; then
+	echo "Buildig operator"
+	build_cilium_operator
+fi
 
 build_cilium
 cilium-helm-install latest
 echo "Rolling out Cilium DaemonSet..."
 kubectl rollout restart ds cilium -n kube-system
 
+echo "Waiting to become stable..."
+kubectl wait --for condition=Ready pods -l=k8s-app=cilium
+end_time=$(date '+%s')
+
+echo "Storing build data into metrics.db"
+cpus=$(nproc)
+memo=$(free -m | grep "Mem:" | awk '{print $2}')
+sqlite ~/.metrics.db "insert into builds (start_time, end_time, cpus, memory) values (${start_time}, ${end_time}, ${cpus}, ${memo});"
+echo "done"
