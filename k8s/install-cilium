@@ -56,7 +56,7 @@ function cilium-helm-install {
       --set operator.image.tag=$CILIUM_CI_TAG | tee /tmp/cilium.yaml
     kubectl apply -f /tmp/cilium.yaml
 }
-if [[ "${controller}" ]]; then
+if [[ "${controller}" == "true" ]]; then
 	echo "Buildig operator"
 	build_cilium_operator
 fi
