@@ -8,7 +8,7 @@ function highlight_notable {
 
 while true; do
 	# Grab the newest Pod obj.
-	cilium_pods_data=$(kubectl get pods -n kube-system -l=k8s-app=cilium --sort-by=.metadata.creationTimestamp -o json) 
+	cilium_pods_data=$(kubectl get pods -n kube-system -l=k8s-app=cilium --field-selector='spec.nodeName=kind-worker' --sort-by=.metadata.creationTimestamp -o json) 
 	pod_name=$(echo ${cilium_pods_data} | jq -r .items[0].metadata.name)
 	phase=$(echo ${cilium_pods_data} | jq -r .items[0].status.phase)
 
