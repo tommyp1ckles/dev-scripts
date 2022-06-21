@@ -1,0 +1,20 @@
+#!/bin/bash
+
+csv=false
+
+while getopts "mc" arg; do
+    case "$arg" in    
+      c) csv=true ;;
+    esac
+done
+
+query="select date(start_time, 'unixepoch') as date, avg(end_time-start_time) as avg_duration, count(*) as count from builds group by date order by start_time desc"
+
+seperator=" "
+opts=-header
+if [[ "${csv}" == "true" ]]; then
+    seperator=","
+fi
+
+sqlite ${opts} -separator "${seperator}" ~/.metrics.db "${query}"
+

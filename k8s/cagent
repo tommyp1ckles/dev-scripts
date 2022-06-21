@@ -1,0 +1,46 @@
+#!/bin/bash
+# Prints cilium agent running on a particular node, defaults to first none
+# control-plane node in kind cluster.
+
+DEFAULT_WORKER=kind-worker
+
+set -o pipefail
+
+node=
+kexec=false
+
+function help() {
+    printf "Usage: ${0} -n <node>\n"
+    echo "-x: exec into the pod"
+    echo "-n: node name (default kind-worker3)"
+}
+
+while getopts "n:xh" arg; do
+    case "$arg" in    
+      n) node=${OPTARG} ;;
+      x) kexec=true ;;
+      h) help
+	 exit 0
+	 ;;
+      *) help 
+         exit 1
+	 ;;
+    esac
+done
+
+if [ -z ${node} ]; then
+	node=${DEFAULT_WORKER}
+fi
+
+# Simply returns the name of an agent not running on a Kind controller node.
+name=$(kubectl get pods -n kube-system \
+	-l=k8s-app=cilium \
+	--field-selector="spec.nodeName=${node}" \
+	--sort-by=.metadata.creationTimestamp -o json \
+	| jq -r .items[0].metadata.name) 
+
+printf "%s\n" $name
+
+if [[ "${kexec}" == "true" ]]; then
+	kubectl exec -it ${name} bash
+fi

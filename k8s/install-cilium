@@ -5,11 +5,17 @@ set -o pipefail
 controller=false
 debug=false
 start_time=$(date '+%s')
+helm_only=false
+debug_helm=
+helm_install=false
 
-while getopts "ad" arg; do
+while getopts "adhyi" arg; do
     case "$arg" in    
       a) controller=true ;;
       d) debug=true ;;
+      h) helm_only=true ;;
+      y) debug_helm="--debug" ;;
+      i) helm_install=true ;;
     esac
 done
 
@@ -25,6 +31,7 @@ set -o pipefail
 export DOCKER_REGISTRY=localhost:5000
 export DOCKER_FLAGS=--push 
 export DOCKER_IMAGE_TAG=latest
+export NOSTRIP=true
 
 function build_cilium {
     (cd ${project_dir} && make dev-docker-image)
@@ -42,7 +49,11 @@ function cilium-helm-install {
     ciliumVersion=${1}
     cd ${install_dir}
     CILIUM_CI_TAG="${1}"
-    helm template cilium ./cilium \
+    action=template
+    if [[ "${helm_install}" == "true" ]]; then
+        action=install
+    fi
+    helm ${action} ${debug_helm} cilium ./cilium \
       --namespace kube-system \
       --set prometheus.enabled=true \
       --set operator.prometheus.enabled=true \
@@ -53,6 +64,7 @@ function cilium-helm-install {
       --set operator.image.repository=localhost:5000/cilium/operator \
       --set operator.image.suffix="" \
       --set securityContext.privileged=true \
+      --set enableCiliumEndpointSlice=true \
       --set operator.image.tag=$CILIUM_CI_TAG | tee /tmp/cilium.yaml
     kubectl apply -f /tmp/cilium.yaml
 }
@@ -61,10 +73,21 @@ if [[ "${controller}" == "true" ]]; then
 	build_cilium_operator
 fi
 
+if [[ "${helm_only}" == "true" ]]; then
+	echo "[Info] Only applying helm charts!" 
+	cilium-helm-install latest
+	echo "[Info] Done applying helm charts!" 
+	exit 0
+fi
+
 build_cilium
 cilium-helm-install latest
 echo "Rolling out Cilium DaemonSet..."
 kubectl rollout restart ds cilium -n kube-system
+if [[ "${controller}" == "true" ]]; then
+	echo "Rolling out Cilium Operator..."
+	kubectl rollout restart deployment cilium-operator -n kube-system
+fi
 
 echo "Waiting to become stable..."
 kubectl wait --for condition=Ready pods -l=k8s-app=cilium

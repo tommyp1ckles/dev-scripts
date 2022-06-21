@@ -1,0 +1,5 @@
+#!/bin/bash
+project_dir=$HOME/go/src/github.com/cilium/cilium
+kind delete cluster
+(cd ${project_dir} && make kind WORKERS=3)
+install-cilium -a

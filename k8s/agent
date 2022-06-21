@@ -1,4 +1,0 @@
-#!/bin/bash
-# Simply returns the name of an agent not running on a Kind controller node.
-name=$(kubectl get pods -n kube-system -l=k8s-app=cilium --field-selector='spec.nodeName=kind-worker' --sort-by=.metadata.creationTimestamp -o json | jq -r .items[0].metadata.name) 
-printf $name
