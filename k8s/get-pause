@@ -1,0 +1,12 @@
+#!/bin/bash
+
+worker=kind-worker
+function k8s_ctr_ls() {
+	docker exec $worker bash -c "for container in \$(ctr  --namespace k8s.io task list -q); do ctr  --namespace k8s.io container info \$container ; done"
+}
+
+id=$(k8s_ctr_ls | jq '. | select(.Labels."io.kubernetes.pod.name"=="curl") | select(.Image=="k8s.gcr.io/pause:3.6")' | jq -r .ID )
+echo $id
+#kubectl delete pod $(cagent -n ${worker})
+#docker exec $worker bash -c "rm -rf /etc/cni/net.d/05-cilium.conf"
+#docker exec $worker bash -c "ctr --namespace k8s.io task kill ${id}"

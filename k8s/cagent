@@ -7,18 +7,21 @@ DEFAULT_WORKER=kind-worker
 set -o pipefail
 
 node=
+node_num=
 kexec=false
 
 function help() {
     printf "Usage: ${0} -n <node>\n"
     echo "-x: exec into the pod"
     echo "-n: node name (default kind-worker3)"
+    echo "-i: node number for kind cluster (ex. 2 for 'kind-worker2')"
 }
 
-while getopts "n:xh" arg; do
+while getopts "n:i:xh" arg; do
     case "$arg" in    
       n) node=${OPTARG} ;;
       x) kexec=true ;;
+      i) node_num=${OPTARG} ;;
       h) help
 	 exit 0
 	 ;;
@@ -28,8 +31,16 @@ while getopts "n:xh" arg; do
     esac
 done
 
+if [ ! -z ${node_num} ]; then
+    if [[ "${node_num}" == "0" ]]; then
+        node=${DEFAULT_WORKER}
+    else 
+        node="${DEFAULT_WORKER}${node_num}"
+    fi
+fi
+
 if [ -z ${node} ]; then
-	node=${DEFAULT_WORKER}
+    node=${DEFAULT_WORKER}
 fi
 
 # Simply returns the name of an agent not running on a Kind controller node.
