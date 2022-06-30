@@ -69,7 +69,7 @@ function cilium-helm-install {
     kubectl apply -f /tmp/cilium.yaml
 }
 if [[ "${controller}" == "true" ]]; then
-	echo "Buildig operator"
+	echo "Building operator"
 	build_cilium_operator
 fi
 
