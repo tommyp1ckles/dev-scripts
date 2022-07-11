@@ -9,13 +9,14 @@ helm_only=false
 debug_helm=
 helm_install=false
 
-while getopts "adhyi" arg; do
+while getopts "adhyik" arg; do
     case "$arg" in    
       a) controller=true ;;
       d) debug=true ;;
       h) helm_only=true ;;
       y) debug_helm="--debug" ;;
       i) helm_install=true ;;
+      k) etcd=true ;;
     esac
 done
 
@@ -41,6 +42,17 @@ function build_cilium_operator {
     (cd ${project_dir} && make docker-operator-generic-image)
 }
 
+# Creates basic one node etcd cluster with no auth or tls for testing.
+# Note: This likely won't work until you have a CNI installed. You likely
+# will want to do this as a second step after doing an initial CRD based
+# install.
+function install-etcd {
+    helm install \
+        etcd bitnami/etcd \
+        -n kube-system \
+        --set auth.rbac.create=false,readinessProbe.enabled=false,livenessProbe.enabled=false,startupProbe.enabled=false,persistence.enabled=false
+}
+
 function cilium-helm-install {
     if [ -z "${1}" ]; then
         echo "tag not provided"
@@ -52,6 +64,12 @@ function cilium-helm-install {
     action=template
     if [[ "${helm_install}" == "true" ]]; then
         action=install
+    fi
+    KVSTORE_ARGS=
+    if [[ "${etcd}" == "true" ]]; then
+        echo "[INFO] Enabling etcd kvstore"
+        etcd_cluster_ip=$(kubectl get svc etcd -o=jsonpath={.spec.clusterIP})
+        KVSTORE_ARGS="--set etcd.enabled=true --set etcd.endpoints[0]=http://${etcd_cluster_ip}:2379 --set identityAllocationMode=kvstore"
     fi
     helm ${action} ${debug_helm} cilium ./cilium \
       --namespace kube-system \
@@ -65,7 +83,8 @@ function cilium-helm-install {
       --set operator.image.suffix="" \
       --set securityContext.privileged=true \
       --set enableCiliumEndpointSlice=true \
-      --set operator.image.tag=$CILIUM_CI_TAG | tee /tmp/cilium.yaml
+      ${KVSTORE_ARGS} \
+      --set operator.image.tag=$CILIUM_CI_TAG > /tmp/cilium.yaml
     kubectl apply -f /tmp/cilium.yaml
 }
 if [[ "${controller}" == "true" ]]; then
