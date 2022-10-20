@@ -1,0 +1,4 @@
+#!/bin/bash
+
+pod=$(cagent)
+kubectl exec -n kube-system -it "${pod}" -- ${@}

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cexec cat /run/cilium/state/${1}/ep_config.h | grep CILIUM_BASE | \
+	awk '{print $2}' | awk -F: '{print $2}' | base64 --decode | jq
