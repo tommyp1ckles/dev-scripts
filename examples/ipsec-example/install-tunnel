@@ -1,0 +1,49 @@
+#!/bin/bash
+
+echo "[INFO (install)] Cleaning up old state"
+
+ip xfrm state flush
+ip xfrm policy flush
+
+export LOCAL=${1}
+export REMOTE=${2}
+
+SRC="1.1.1.1"
+DST="2.2.2.2"
+
+# Generate reqid and AES key
+ID=0x`dd if=/dev/urandom count=4 bs=1 2> /dev/null| xxd -p -c 8`
+KEY=0x`dd if=/dev/urandom count=20 bs=1 2> /dev/null| xxd -p -c 40`
+
+echo "[INFO (install)] id = ${ID}"
+echo "[INFO (install)] key = ${KEY}"
+
+echo "[INFO (install)] Adding new state"
+ip xfrm state add src 1.1.1.1 dst 2.2.2.2 \
+        proto esp spi $ID \
+        reqid $ID \
+        mode tunnel \
+        aead 'rfc4106(gcm(aes))' \
+	$KEY 128
+
+ip xfrm state add src 2.2.2.2 dst 1.1.1.1 \
+	proto esp spi $ID \
+	reqid $ID \
+        mode tunnel \
+        aead 'rfc4106(gcm(aes))' \
+	$KEY 128
+
+ip xfrm state
+
+echo "[INFO (install)] Adding new policy"
+echo "[INFO (install)] local.ip = ${LOCAL}"
+echo "[INFO (install)] remote.ip = ${REMOTE}"
+
+ip xfrm policy add src $LOCAL dst $REMOTE dir out tmpl src $SRC dst $DST proto esp reqid $ID mode tunnel
+ip xfrm policy add src $REMOTE dst $LOCAL dir in tmpl src $DST dst $SRC proto esp reqid $ID mode tunnel
+ip xfrm policy add src $REMOTE dst $LOCAL dir fwd tmpl src $DST dst $SRC proto esp reqid $ID mode tunnel
+
+echo "[INFO (install)] Adding new routes ($REMOTE -> ${LOCAL})"
+ip route add $REMOTE dev eth0 src $LOCAL
+
+ip route

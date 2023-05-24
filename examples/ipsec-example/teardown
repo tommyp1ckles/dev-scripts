@@ -1,0 +1,5 @@
+#!/bin/bash
+
+docker kill node0 node1
+docker rm node0 node1
+docker network rm ipsec-example

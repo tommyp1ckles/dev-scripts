@@ -1,0 +1,46 @@
+#!/bin/bash
+
+#set -e
+
+./build
+
+network="ipsec-example"
+
+docker network create \
+	--subnet="172.77.0.0/16" \
+	${network}
+
+docker run \
+	--network=${network} \
+	--cap-add NET_ADMIN \
+	--name=node0 \
+	-d \
+	-it ipsec-example:latest \
+	sleep 99999	
+
+docker run \
+	--network=${network} \
+	--cap-add NET_ADMIN \
+	--name=node1 \
+	-d \
+	-it ipsec-example:latest \
+	sleep 99999
+
+q="'.[0].NetworkSettings.Networks.\"${network}\".IPAddress'"
+echo $q
+
+node0_ip=$(docker inspect node0 | jq -r '.[0].NetworkSettings.Networks."ipsec-example".IPAddress')
+node1_ip=$(docker inspect node1 | jq -r '.[0].NetworkSettings.Networks."ipsec-example".IPAddress')
+
+echo "[INF0] node0.ip = $node0_ip"
+echo "[INF0] node1.ip = $node1_ip"
+
+echo "[INFO] first node ===================="
+
+docker exec node1 /install ${node0_ip} ${node1_ip}
+docker exec node1 /install ${node0_ip} ${node1_ip}
+
+echo "[INFO] second node ===================="
+
+docker exec node0 /install ${node1_ip} ${node0_ip}
+docker exec node0 /install ${node1_ip} ${node0_ip}
