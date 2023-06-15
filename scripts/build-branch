@@ -1,0 +1,30 @@
+#!/bin/bash
+
+branch=$(git branch --show-current)
+
+function ctrl_c() {
+	echo "[Info] 💀 CTRL-C ... Reverting branch!!!"
+	git checkout ${branch}
+	exit 0
+}
+
+trap ctrl_c INT
+
+for hash in $(git log --format="%H" ${branch}...main); do
+	msg=$(git show ${hash} --format=%s --no-patch)
+	printf "[Info] 🏗️ Commit: ${msg} =>\t${hash}\n"
+	git checkout ${hash} 
+	echo "[Info] 🏗️ Building ${hash}\n"
+	make dev-docker-image 2>/dev/null >/dev/null
+	if [[ $? == 0 ]]; then
+		echo "[Info] ✅ OK ✅ ${hash}"
+	else
+		echo "[Error] ❌ Failed to build ❌ ${msg} => ${hash}"
+		git checkout $branch
+		exit 1
+	fi
+done
+
+git checkout $branch
+echo "[Info] ✅✅✅✅ All commits on branch ${branch} succeeded !!! ✅✅✅✅"
+

@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+echo "Pulling oss/main"
+git pull oss main
+echo "Attempting to rebase"
+git rebase oss/main
+if [ $? -eq 0 ]; then
+	echo "Done!"
+else
+	echo "Merge conflicts: do interactive rebase"
+	git rebase --abort
+fi

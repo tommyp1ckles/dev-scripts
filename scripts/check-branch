@@ -1,0 +1,9 @@
+#!/bin/bash
+
+for hash in $(git log --format="%H" $(git branch --show-current)...main); do
+	echo $hash
+	#for after in $(git log --format="%H" ${hash}...main); do
+		#echo $after
+		#git diff 
+	#done
+done

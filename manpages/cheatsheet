@@ -1,0 +1,13 @@
+.\" Manpage for tommyp1ckles.
+.\" By tom.hadlaw@isovalent.com.
+.TH manz 8 "16 June 2023" "1.0" "tommyp1ckles cheatsheet"
+.SH Restaging a Commit
+To restage an existing commit during a rebase, edit your desired commit then do:
+
+git add -p
+
+Then commit the newly added changes, repeat until you have broken down the commit to the desired state.
+
+.SH Get explicit range for CIDR
+
+cidr_to_range 10.0.0.0/12
