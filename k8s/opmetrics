@@ -1,0 +1,3 @@
+#!/bin/bash
+kubectl exec -it $(kubectl get pods -n kube-system -l=name=cilium-operator -o json | jq -r .items[0].metadata.name) \
+	-n kube-system -- /usr/bin/cilium-operator-generic metrics list
